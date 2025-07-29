@@ -1,13 +1,12 @@
-# .github/actions/grafana-annotate/action.yml
-name: "Grafana Deployment Annotation (Node.js Modular)"
-description: "A GitHub Action to create and automatically update Grafana deployment annotations with start and end times."
+name: "Grafana Annotation Action"
+description: "A GitHub Action to create and automatically create Grafana annotation regions."
 
 inputs:
   grafana_url:
     description: "The base URL of your Grafana instance."
     required: true
   grafana_api_key:
-    description: "Grafana API key with write permissions. Store as a GitHub Secret."
+    description: "Grafana API key with write permissions."
     required: true
   dashboard_id:
     description: "(Optional) The ID of the Grafana dashboard where the annotation should appear."

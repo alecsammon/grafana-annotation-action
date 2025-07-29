@@ -33,11 +33,11 @@ async function post() {
         const annotationsApiUrl = `${baseUrl}/api/annotations/${annotationId}`; // Specific endpoint for update
 
         const updatedAnnotationPayload = {
-            time: parseInt(startTimeMs, 10), // Ensure it's a number
+            // time: parseInt(startTimeMs, 10), // Ensure it's a number
             timeEnd: endTimeMs, // Add the end time
-            tags: tags.split(',').map(tag => tag.trim()),
-            text: `Deployment by ${actor} (repo: ${repository}, run: #${runId}, commit: ${commitSha}): ${message} (Completed)`, // Optional: append 'Completed'
-            isRegion: true, // Keep it as a region
+            // tags: tags.split(',').map(tag => tag.trim()),
+            // text: `Deployment by ${actor} (repo: ${repository}, run: #${runId}, commit: ${commitSha}): ${message} (Completed)`, // Optional: append 'Completed'
+            // isRegion: true, // Keep it as a region
         };
 
         if (dashboardId) {

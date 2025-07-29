@@ -32,10 +32,12 @@ async function run() {
 
         const annotationPayload = {
             time: startTimeMs, // Set initial time
-            tags: tags.split(',').map(tag => tag.trim()), // Grafana expects array of strings for tags
+            tags: tags.split('\n').map(tag => tag.trim()), // Grafana expects array of strings for tags
             text: `Deployment by ${actor} (repo: ${repository}, run: #${runId}, commit: ${commitSha}): ${message}`,
             isRegion: true, // Mark as a region to allow for timeEnd later
         };
+
+        console.log({annotationPayload})
 
         if (dashboardId) {
             annotationPayload.dashboardId = parseInt(dashboardId, 10);
