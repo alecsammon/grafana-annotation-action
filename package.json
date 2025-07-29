@@ -1,0 +1,24 @@
+{
+  "name": "grafana-annotation-action",
+  "version": "1.0.0",
+  "description": "A GitHub Action to create and update Grafana annotations.",
+  "main": "main.js",
+  "scripts": {
+    "build": "ncc build main.js -o dist/main --source-map && ncc build post.js -o dist/post --source-map"
+  },
+  "keywords": [
+    "github-actions",
+    "grafana",
+    "annotation"
+  ],
+  "author": "Your Name/Organization",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.1",
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.36.1"
+  }
+}

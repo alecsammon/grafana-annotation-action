@@ -1,0 +1,49 @@
+# .github/actions/grafana-annotate/action.yml
+name: "Grafana Deployment Annotation (Node.js Modular)"
+description: "A GitHub Action to create and automatically update Grafana deployment annotations with start and end times."
+
+inputs:
+  grafana_url:
+    description: "The base URL of your Grafana instance."
+    required: true
+  grafana_api_key:
+    description: "Grafana API key with write permissions. Store as a GitHub Secret."
+    required: true
+  dashboard_id:
+    description: "(Optional) The ID of the Grafana dashboard where the annotation should appear."
+    required: false
+  panel_id:
+    description: "(Optional) The ID of a specific panel on the dashboard where the annotation should appear. Requires dashboard_id to be set."
+    required: false
+  message:
+    description: "(Optional) The text message for the annotation."
+    required: false
+  tags:
+    description: "(Optional) A comma-separated string of tags for the annotation (e.g., 'tag1,tag2')."
+    required: false
+  commit_sha:
+    description: "(Optional) The Git commit SHA associated with the deployment."
+    required: false
+    default: ${{ github.sha }}
+  run_id:
+    description: "(Optional) The GitHub Actions run ID."
+    required: false
+    default: ${{ github.run_id }}
+  repository:
+    description: "(Optional) The GitHub repository name (owner/repo)."
+    required: false
+    default: ${{ github.repository }}
+  actor:
+    description: "(Optional) The GitHub user or bot that triggered the workflow."
+    required: false
+    default: ${{ github.actor }}
+
+outputs:
+  annotation_id:
+    description: "The ID of the created Grafana annotation."
+    value: ${{ steps.main.outputs.annotation_id }}
+
+runs:
+  using: "node16" # Specify Node.js 16 runtime
+  main: "dist/main/index.js" # This would be main.js bundled into dist/index.js
+  post: "dist/post/index.js" # This would be post.js bundled into dist/post.js
