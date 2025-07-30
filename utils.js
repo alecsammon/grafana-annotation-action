@@ -1,26 +1,6 @@
-// .github/actions/grafana-annotate/utils.js
 const core = require('@actions/core');
 const fetch = require('node-fetch'); // For making HTTP requests
 
-/**
- * Gets the current time in milliseconds since the Unix epoch.
- * @returns {number} The current time in milliseconds.
- */
-const getCurrentTimeMs = () => Date.now();
-
-/**
- * Safely parses a JSON response from an HTTP fetch.
- * @param {Response} response The fetch API Response object.
- * @returns {Promise<object|null>} The parsed JSON object or null if parsing fails.
- */
-const safeJsonParse = async (response) => {
-    try {
-        return await response.json();
-    } catch (error) {
-        core.error(`Failed to parse JSON response: ${error.message}`);
-        return null;
-    }
-};
 
 /**
  * Makes an HTTP request to the Grafana API with exponential backoff retry logic.
@@ -31,7 +11,7 @@ const safeJsonParse = async (response) => {
  * @returns {Promise<{success: boolean, status: number, body: object|null}>} Request result.
  */
 const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
-    const maxRetries = 5;
+    const maxRetries = 3;
     let attempt = 0;
 
     while (attempt < maxRetries) {
@@ -45,11 +25,19 @@ const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
                 body: JSON.stringify(payload),
             });
 
-            const responseBody = await safeJsonParse(response);
+            let responseBody;
+
+            try {
+                responseBody = await response.json();
+            } catch (error) {
+                core.error(`Failed to parse JSON response: ${error.message}`);
+                return null;
+            }
+
             core.info(`Grafana API Response Status: ${response.status}`);
             core.debug(`Grafana API Response Body: ${JSON.stringify(responseBody, null, 2)}`);
 
-            if (response.ok) { // Check for 2xx status codes
+            if (response.ok) {
                 return {success: true, status: response.status, body: responseBody};
             } else {
                 core.warning(`Grafana API call failed (attempt ${attempt + 1}): HTTP ${response.status} - ${response.statusText}`);
@@ -71,6 +59,5 @@ const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
 };
 
 module.exports = {
-    getCurrentTimeMs,
     makeGrafanaApiRequest
 };

@@ -32555,29 +32555,9 @@ function wrappy (fn, cb) {
 /***/ 1252:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-// .github/actions/grafana-annotate/utils.js
 const core = __nccwpck_require__(2186);
 const fetch = __nccwpck_require__(467); // For making HTTP requests
 
-/**
- * Gets the current time in milliseconds since the Unix epoch.
- * @returns {number} The current time in milliseconds.
- */
-const getCurrentTimeMs = () => Date.now();
-
-/**
- * Safely parses a JSON response from an HTTP fetch.
- * @param {Response} response The fetch API Response object.
- * @returns {Promise<object|null>} The parsed JSON object or null if parsing fails.
- */
-const safeJsonParse = async (response) => {
-    try {
-        return await response.json();
-    } catch (error) {
-        core.error(`Failed to parse JSON response: ${error.message}`);
-        return null;
-    }
-};
 
 /**
  * Makes an HTTP request to the Grafana API with exponential backoff retry logic.
@@ -32588,7 +32568,7 @@ const safeJsonParse = async (response) => {
  * @returns {Promise<{success: boolean, status: number, body: object|null}>} Request result.
  */
 const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
-    const maxRetries = 5;
+    const maxRetries = 3;
     let attempt = 0;
 
     while (attempt < maxRetries) {
@@ -32602,11 +32582,19 @@ const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
                 body: JSON.stringify(payload),
             });
 
-            const responseBody = await safeJsonParse(response);
+            let responseBody;
+
+            try {
+                responseBody = await response.json();
+            } catch (error) {
+                core.error(`Failed to parse JSON response: ${error.message}`);
+                return null;
+            }
+
             core.info(`Grafana API Response Status: ${response.status}`);
             core.debug(`Grafana API Response Body: ${JSON.stringify(responseBody, null, 2)}`);
 
-            if (response.ok) { // Check for 2xx status codes
+            if (response.ok) {
                 return {success: true, status: response.status, body: responseBody};
             } else {
                 core.warning(`Grafana API call failed (attempt ${attempt + 1}): HTTP ${response.status} - ${response.statusText}`);
@@ -32628,7 +32616,6 @@ const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
 };
 
 module.exports = {
-    getCurrentTimeMs,
     makeGrafanaApiRequest
 };
 
@@ -34573,10 +34560,9 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
-// .github/actions/grafana-annotate/main.js
 const core = __nccwpck_require__(2186);
 const github = __nccwpck_require__(5438);
-const { getCurrentTimeMs, makeGrafanaApiRequest } = __nccwpck_require__(1252);
+const { makeGrafanaApiRequest } = __nccwpck_require__(1252);
 
 /**
  * The main function that runs when the action is called.
@@ -34584,36 +34570,39 @@ const { getCurrentTimeMs, makeGrafanaApiRequest } = __nccwpck_require__(1252);
  */
 async function run() {
     try {
-        const grafanaUrl = core.getInput('grafana_url', { required: true });
+        let grafanaUrl = core.getInput('grafana_url', { required: true });
+        grafanaUrl = grafanaUrl.endsWith('/') ? grafanaUrl.slice(0, -1) : grafanaUrl;
+
         const grafanaApiKey = core.getInput('grafana_api_key', { required: true });
         const dashboardId = core.getInput('dashboard_id');
         const panelId = core.getInput('panel_id');
         const customMessage = core.getInput('message');
-        const customTags = core.getInput('tags');
+        const tags = core.getInput('tags');
         const commitSha = core.getInput('commit_sha');
         const runId = core.getInput('run_id');
         const repository = core.getInput('repository');
         const actor = core.getInput('actor');
 
-        // Ensure Grafana URL ends without a slash for consistent path concatenation
-        const baseUrl = grafanaUrl.endsWith('/') ? grafanaUrl.slice(0, -1) : grafanaUrl;
-        const annotationsApiUrl = `${baseUrl}/api/annotations`;
+        const annotationsApiUrl = `${grafanaUrl}/api/annotations`;
 
-        const startTimeMs = getCurrentTimeMs();
-
-        // Construct the annotation message
         const message = customMessage || github.context.payload.head_commit?.message || commitSha;
-        const tags = customTags || 'deployment,github-actions';
 
         const annotationPayload = {
-            time: startTimeMs, // Set initial time
-            tags: tags.split(',').map(tag => tag.trim()), // Grafana expects array of strings for tags
+            time:  Date.now(),
             text: `Deployment by ${actor} (repo: ${repository}, run: #${runId}, commit: ${commitSha}): ${message}`,
-            isRegion: true, // Mark as a region to allow for timeEnd later
+            isRegion: true,
         };
+
+        if (tags) {
+            annotationPayload.tags = tags.split("\n").map(tag => tag.trim());
+        }
+
+
+        //@TODO: error if panelId is provided without dashboardId
 
         if (dashboardId) {
             annotationPayload.dashboardId = parseInt(dashboardId, 10);
+
             if (panelId) {
                 annotationPayload.panelId = parseInt(panelId, 10);
             }
@@ -34629,19 +34618,9 @@ async function run() {
             core.info(`✔ Successfully created annotation with ID: ${annotationId}`);
             core.setOutput('annotation_id', annotationId);
 
-            // Save all necessary inputs and the annotation ID to state for the post action
             core.saveState('annotation_id', annotationId);
-            core.saveState('start_time_ms', startTimeMs);
-            core.saveState('grafana_url', grafanaUrl);
             core.saveState('grafana_api_key', grafanaApiKey);
-            core.saveState('dashboard_id', dashboardId);
-            core.saveState('panel_id', panelId);
-            core.saveState('message', message);
-            core.saveState('tags', tags);
-            core.saveState('commit_sha', commitSha);
-            core.saveState('run_id', runId);
-            core.saveState('repository', repository);
-            core.saveState('actor', actor);
+            core.saveState('grafana_url', grafanaUrl);
 
         } else {
             core.setFailed(`✖ Failed to create Grafana annotation: ${result.body ? JSON.stringify(result.body) : 'No response body'}`);

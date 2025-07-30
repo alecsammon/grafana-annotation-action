@@ -29603,29 +29603,9 @@ module.exports.implForWrapper = function (wrapper) {
 /***/ 1252:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-// .github/actions/grafana-annotate/utils.js
 const core = __nccwpck_require__(2186);
 const fetch = __nccwpck_require__(467); // For making HTTP requests
 
-/**
- * Gets the current time in milliseconds since the Unix epoch.
- * @returns {number} The current time in milliseconds.
- */
-const getCurrentTimeMs = () => Date.now();
-
-/**
- * Safely parses a JSON response from an HTTP fetch.
- * @param {Response} response The fetch API Response object.
- * @returns {Promise<object|null>} The parsed JSON object or null if parsing fails.
- */
-const safeJsonParse = async (response) => {
-    try {
-        return await response.json();
-    } catch (error) {
-        core.error(`Failed to parse JSON response: ${error.message}`);
-        return null;
-    }
-};
 
 /**
  * Makes an HTTP request to the Grafana API with exponential backoff retry logic.
@@ -29636,7 +29616,7 @@ const safeJsonParse = async (response) => {
  * @returns {Promise<{success: boolean, status: number, body: object|null}>} Request result.
  */
 const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
-    const maxRetries = 5;
+    const maxRetries = 3;
     let attempt = 0;
 
     while (attempt < maxRetries) {
@@ -29650,11 +29630,19 @@ const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
                 body: JSON.stringify(payload),
             });
 
-            const responseBody = await safeJsonParse(response);
+            let responseBody;
+
+            try {
+                responseBody = await response.json();
+            } catch (error) {
+                core.error(`Failed to parse JSON response: ${error.message}`);
+                return null;
+            }
+
             core.info(`Grafana API Response Status: ${response.status}`);
             core.debug(`Grafana API Response Body: ${JSON.stringify(responseBody, null, 2)}`);
 
-            if (response.ok) { // Check for 2xx status codes
+            if (response.ok) {
                 return {success: true, status: response.status, body: responseBody};
             } else {
                 core.warning(`Grafana API call failed (attempt ${attempt + 1}): HTTP ${response.status} - ${response.statusText}`);
@@ -29676,7 +29664,6 @@ const makeGrafanaApiRequest = async (url, method, payload, apiKey) => {
 };
 
 module.exports = {
-    getCurrentTimeMs,
     makeGrafanaApiRequest
 };
 
@@ -31623,7 +31610,7 @@ var __webpack_exports__ = {};
 (() => {
 // .github/actions/grafana-annotate/post.js
 const core = __nccwpck_require__(2186);
-const { getCurrentTimeMs, makeGrafanaApiRequest } = __nccwpck_require__(1252);
+const { makeGrafanaApiRequest } = __nccwpck_require__(1252);
 
 /**
  * The post function that runs after all job steps.
@@ -31632,43 +31619,19 @@ const { getCurrentTimeMs, makeGrafanaApiRequest } = __nccwpck_require__(1252);
 async function post() {
     try {
         const annotationId = core.getState('annotation_id');
-        const startTimeMs = core.getState('start_time_ms');
         const grafanaUrl = core.getState('grafana_url');
         const grafanaApiKey = core.getState('grafana_api_key');
-        const dashboardId = core.getState('dashboard_id');
-        const panelId = core.getState('panel_id');
-        const message = core.getState('message');
-        const tags = core.getState('tags');
-        const commitSha = core.getState('commit_sha');
-        const runId = core.getState('run_id');
-        const repository = core.getState('repository');
-        const actor = core.getState('actor');
 
         if (!annotationId) {
             core.info('No annotation ID found in state. Skipping post-deployment update.');
             return;
         }
 
-        const endTimeMs = getCurrentTimeMs();
-
-        // Ensure Grafana URL ends without a slash
-        const baseUrl = grafanaUrl.endsWith('/') ? grafanaUrl.slice(0, -1) : grafanaUrl;
-        const annotationsApiUrl = `${baseUrl}/api/annotations/${annotationId}`; // Specific endpoint for update
+        const annotationsApiUrl = `${grafanaUrl}/api/annotations/${annotationId}`;
 
         const updatedAnnotationPayload = {
-            time: parseInt(startTimeMs, 10), // Ensure it's a number
-            timeEnd: endTimeMs, // Add the end time
-            tags: tags.split(',').map(tag => tag.trim()),
-            text: `Deployment by ${actor} (repo: ${repository}, run: #${runId}, commit: ${commitSha}): ${message} (Completed)`, // Optional: append 'Completed'
-            isRegion: true, // Keep it as a region
+            timeEnd: Date.now(),
         };
-
-        if (dashboardId) {
-            updatedAnnotationPayload.dashboardId = parseInt(dashboardId, 10);
-            if (panelId) {
-                updatedAnnotationPayload.panelId = parseInt(panelId, 10);
-            }
-        }
 
         core.info(`Attempting to update Grafana annotation (ID: ${annotationId}) with end time...`);
         core.debug(`Payload: ${JSON.stringify(updatedAnnotationPayload, null, 2)}`);
@@ -31688,7 +31651,6 @@ async function post() {
     }
 }
 
-// Call the post function
 post();
 
 })();
