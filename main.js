@@ -1,5 +1,4 @@
 const core = require('@actions/core');
-const github = require('@actions/github');
 const { makeGrafanaApiRequest } = require('./utils');
 
 /**
@@ -12,22 +11,17 @@ async function run() {
         grafanaUrl = grafanaUrl.endsWith('/') ? grafanaUrl.slice(0, -1) : grafanaUrl;
 
         const grafanaApiKey = core.getInput('grafana_api_key', { required: true });
+        const message = core.getInput('message', { required: true });
+
         const dashboardId = core.getInput('dashboard_id');
         const panelId = core.getInput('panel_id');
-        const customMessage = core.getInput('message');
         const tags = core.getInput('tags');
-        const commitSha = core.getInput('commit_sha');
-        const runId = core.getInput('run_id');
-        const repository = core.getInput('repository');
-        const actor = core.getInput('actor');
 
         const annotationsApiUrl = `${grafanaUrl}/api/annotations`;
 
-        const message = customMessage || github.context.payload.head_commit?.message || commitSha;
-
         const annotationPayload = {
             time:  Date.now(),
-            text: `Deployment by ${actor} (repo: ${repository}, run: #${runId}, commit: ${commitSha}): ${message}`,
+            text: message.trim(),
             isRegion: true,
         };
 

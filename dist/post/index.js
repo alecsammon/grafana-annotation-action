@@ -31636,7 +31636,7 @@ async function post() {
         core.info(`Attempting to update Grafana annotation (ID: ${annotationId}) with end time...`);
         core.debug(`Payload: ${JSON.stringify(updatedAnnotationPayload, null, 2)}`);
 
-        const result = await makeGrafanaApiRequest(annotationsApiUrl, 'PUT', updatedAnnotationPayload, grafanaApiKey);
+        const result = await makeGrafanaApiRequest(annotationsApiUrl, 'PATCH', updatedAnnotationPayload, grafanaApiKey);
 
         if (result.success) {
             core.info(`✔ Successfully updated annotation ID: ${annotationId} with end time.`);
